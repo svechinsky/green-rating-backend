@@ -1,0 +1,1 @@
+{"_default": {}, "nodes": {"1": {"name": "A", "pubkey": "puba", "rank": 0}, "2": {"name": "B", "pubkey": "pubb", "rank": 1}}, "edges": {"1": {"from": "puba", "to": "pubb", "is_approved": true, "signature": "ghjgyu67"}}}
