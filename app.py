@@ -13,6 +13,15 @@ app = Flask(__name__)
 # nodes.insert_multiple([
 #     {'name': 'A', 'pubkey': 'puba', 'rank': 0},
 #     {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+#
 # ])
 #
 # edges.insert_multiple([
