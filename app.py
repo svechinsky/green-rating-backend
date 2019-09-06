@@ -10,23 +10,35 @@ edges = db.table('edges')
 
 app = Flask(__name__)
 
-# nodes.insert_multiple([
-#     {'name': 'A', 'pubkey': 'puba', 'rank': 0},
-#     {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-#
-# ])
-#
-# edges.insert_multiple([
-#     {'from': 'puba', 'to': 'pubb', 'is_approved': True, 'signature': 'ghjgyu67'}
-# ])
+nodes.insert_multiple([
+    {'name': 'A', 'pubkey': 'puba', 'rank': 0},
+    {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'C', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'D', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'E', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'F', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'G', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'H', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'I', 'pubkey': 'pubb', 'rank': 1},
+    {'name': 'J', 'pubkey': 'pubb', 'rank': 1},
+
+])
+
+edges.insert_multiple([
+    {'from': 'puba', 'to': 'pubb', 'is_approved': True, 'signature': 'ghjgyu67'}
+])
+
+
+def to_hex_der(pem_key):
+    return pem_key.save_pkcs1('DER').hex()
+
+
+def to_priv_pem_key(hex_der):
+    return rsa.PrivateKey.load_pkcs1(bytes.fromhex(hex_der), 'DER')
+
+
+def to_pub_pem_key(hex_der):
+    return rsa.PublicKey.load_pkcs1(bytes.fromhex(hex_der), 'DER')
 
 
 # noinspection PyBroadException
