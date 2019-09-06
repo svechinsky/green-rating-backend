@@ -1,32 +1,15 @@
 from flask import Flask, jsonify, request
-from tinydb import TinyDB, Query, where
+from tinydb import TinyDB, Query
 from tinydb.operations import set
 from config import privkey, pubkey, name
 import rsa
 
-db = TinyDB('data.json')
-nodes = db.table('nodes')
-edges = db.table('edges')
+db = TinyDB('data.json', indent=4)
+nodes_table = db.table('nodes')
+edges_table = db.table('edges')
+
 
 app = Flask(__name__)
-
-nodes.insert_multiple([
-    {'name': 'A', 'pubkey': 'puba', 'rank': 0},
-    {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'C', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'D', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'E', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'F', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'G', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'H', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'I', 'pubkey': 'pubb', 'rank': 1},
-    {'name': 'J', 'pubkey': 'pubb', 'rank': 1},
-
-])
-
-edges.insert_multiple([
-    {'from': 'puba', 'to': 'pubb', 'is_approved': True, 'signature': 'ghjgyu67'}
-])
 
 
 def to_hex_der(pem_key):
@@ -41,10 +24,14 @@ def to_pub_pem_key(hex_der):
     return rsa.PublicKey.load_pkcs1(bytes.fromhex(hex_der), 'DER')
 
 
+def get_rsa_pair():
+    return tuple(to_hex_der(key) for key in rsa.newkeys(512))
+
+
 # noinspection PyBroadException
 def verify_rsa_key(message, signature, pubkey):
     try:
-        if rsa.verify(message, signature, pubkey):
+        if rsa.verify(message, signature, to_pub_pem_key(pubkey)):
             return True
     except:
         return False
@@ -63,15 +50,15 @@ def approve_edge(edge):
 
 
 def rank_nodes(initial_node_pubkey):
-    nodes.update(set('rank', -1))
-    nodes.update(set('rank', 0), Query().pubkey == initial_node_pubkey)
+    nodes_table.update(set('rank', -1))
+    nodes_table.update(set('rank', 0), Query().pubkey == initial_node_pubkey)
 
     rank = 1
     curr_pubkeys = [initial_node_pubkey]
     while True:
         new_pubkeys = []
         for pubkey in curr_pubkeys:
-            for edge in edges.search(
+            for edge in edges_table.search(
                     Query()['from'] == pubkey
                     and Query()['is_approved'] == True
             ):
@@ -82,11 +69,11 @@ def rank_nodes(initial_node_pubkey):
 
         total_updated_nodes = 0
         for pubkey in new_pubkeys:
-            nodes.update(
+            nodes_table.update(
                 set('rank', rank),
                 Query().pubkey == pubkey and Query().rank != -1
             )
-            total_updated_nodes += len(nodes.search(Query().pubkey == pubkey and Query().rank != -1))
+            total_updated_nodes += len(nodes_table.search(Query().pubkey == pubkey and Query().rank != -1))
         if not total_updated_nodes:
             break
 
@@ -100,22 +87,22 @@ def get_only_entities(entities_with_sig):
 
 @app.route('/api/v1/entities')
 def entities():
-    return jsonify(nodes.all())
+    return jsonify(nodes_table.all())
 
 
 @app.route('/api/v1/approved-entities')
 def approved_entities():
-    return jsonify(nodes.search(Query().rank > 0))
+    return jsonify(nodes_table.search(Query().rank > 0))
 
 
 @app.route('/api/v1/trusted-entities')
 def trusted_entities():
-    return jsonify(nodes.search(Query().rank == 1))
+    return jsonify(nodes_table.search(Query().rank == 1))
 
 
 @app.route('/api/v1/me')
 def me():
-    return jsonify(nodes.search(Query().rank == 0)[0])
+    return jsonify(nodes_table.search(Query().rank == 0)[0])
 
 
 @app.route('/api/v1/add-entity')
@@ -124,16 +111,16 @@ def add_entity():
     data = request.values
     edges_ = data['graph']['edges']
     for edge in edges_:
-        edges.upsert(
+        edges_table.upsert(
             edge,
             Query()['from'] == edge['from'],
             Query()['to'] == edge['to'],
         )
-    edges.update(approve_edge)
+    edges_table.update(approve_edge)
 
     nodes_ = data['graph']['nodes']
     for node in nodes_:
-        nodes.upsert(
+        nodes_table.upsert(
             node,
             Query().pubkey == node['pubkey']
         )
@@ -142,7 +129,7 @@ def add_entity():
 
     node = data['node']['pubkey']
     # returns current node
-    return nodes.search(Query().pubkey == node)[0]
+    return nodes_table.search(Query().pubkey == node)[0]
 
 
 @app.route('/api/v1/sign-entity')
@@ -150,16 +137,17 @@ def sign_entity():
     # receives node to sign
     data = request.values
     pubkey_to_sign = data['pubkey']
-    signature = rsa.sign(pubkey_to_sign, privkey, 'SHA-1')
-    edges.upsert(
+    signature = rsa.sign(pubkey_to_sign, to_priv_pem_key(privkey), 'SHA-1')
+    edges_table.upsert(
         {'from': pubkey, 'to': pubkey_to_sign,
          'signature': signature, 'is_approved': True},
         {'from': pubkey, 'to': pubkey_to_sign}
     )
     rank_nodes(pubkey)
     # return nodes and edges as they are, and current node
-    return jsonify({'graph': {'edges': edges.all(), 'nodes': nodes.all()},
+    return jsonify({'graph': {'edges': edges_table.all(), 'nodes': nodes_table.all()},
                     'node': {'name': name, 'pubkey': pubkey}})
 
 
-app.run('0.0.0.0', 5000)
+if __name__ == '__main__':
+    app.run('0.0.0.0', 5000)
