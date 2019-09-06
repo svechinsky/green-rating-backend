@@ -3,17 +3,19 @@ from tinydb import TinyDB, Query, where
 from tinydb.operations import set
 from config import privkey, pubkey, name
 import rsa
+from flask_cors import CORS
 
 db = TinyDB('data.json')
 nodes = db.table('nodes')
 edges = db.table('edges')
 
 app = Flask(__name__)
+CORS(app)
 
 # nodes.insert_multiple([
 #     {'name': 'A', 'pubkey': 'puba', 'rank': 0},
 #     {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
-# {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
+# {'name': 'B', 'pubkey': 'pubb', 'location},
 # {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
 # {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
 # {'name': 'B', 'pubkey': 'pubb', 'rank': 1},
