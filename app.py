@@ -3,6 +3,7 @@ from tinydb import TinyDB, Query
 from tinydb.operations import set
 from config import privkey, pubkey, name
 import rsa
+from utils import *
 from flask_cors import CORS
 
 db = TinyDB('gdata.json', indent=4)
@@ -12,22 +13,6 @@ edges_table = db.table('edges')
 
 app = Flask(__name__)
 CORS(app)
-
-
-def to_hex_der(pem_key):
-    return pem_key.save_pkcs1('DER').hex()
-
-
-def to_priv_pem_key(hex_der):
-    return rsa.PrivateKey.load_pkcs1(bytes.fromhex(hex_der), 'DER')
-
-
-def to_pub_pem_key(hex_der):
-    return rsa.PublicKey.load_pkcs1(bytes.fromhex(hex_der), 'DER')
-
-
-def get_rsa_pair():
-    return tuple(to_hex_der(key) for key in rsa.newkeys(512))
 
 
 # noinspection PyBroadException
@@ -51,36 +36,36 @@ def approve_edge(edge):
     edge['is_approved'] = is_edge_approved(edge)
 
 
-def rank_nodes(initial_node_pubkey):
-    nodes_table.update(set('rank', -1))
-    nodes_table.update(set('rank', 0), Query().pubkey == initial_node_pubkey)
-
-    rank = 1
-    curr_pubkeys = [initial_node_pubkey]
-    while True:
-        new_pubkeys = []
-        for pubkey in curr_pubkeys:
-            for edge in edges_table.search(
-                    Query()['from'] == pubkey
-                    and Query()['is_approved'] == True
-            ):
-                new_pubkeys.append(edge['to'])
-
-        if not new_pubkeys:
-            break
-
-        total_updated_nodes = 0
-        for pubkey in new_pubkeys:
-            nodes_table.update(
-                set('rank', rank),
-                Query().pubkey == pubkey and Query().rank != -1
-            )
-            total_updated_nodes += len(nodes_table.search(Query().pubkey == pubkey and Query().rank != -1))
-        if not total_updated_nodes:
-            break
-
-        curr_pubkeys = new_pubkeys
-        rank += 1
+# def rank_nodes(initial_node_pubkey):
+#     nodes_table.update(set('rank', -1))
+#     nodes_table.update(set('rank', 0), Query().pubkey == initial_node_pubkey)
+#
+#     rank = 1
+#     curr_pubkeys = [initial_node_pubkey]
+#     while True:
+#         new_pubkeys = []
+#         for pubkey in curr_pubkeys:
+#             for edge in edges_table.search(
+#                     Query()['from'] == pubkey
+#                     and Query()['is_approved'] == True
+#             ):
+#                 new_pubkeys.append(edge['to'])
+#
+#         if not new_pubkeys:
+#             break
+#
+#         total_updated_nodes = 0
+#         for pubkey in new_pubkeys:
+#             nodes_table.update(
+#                 set('rank', rank),
+#                 Query().pubkey == pubkey and Query().rank != -1
+#             )
+#             total_updated_nodes += len(nodes_table.search(Query().pubkey == pubkey and Query().rank != -1))
+#         if not total_updated_nodes:
+#             break
+#
+#         curr_pubkeys = new_pubkeys
+#         rank += 1
 
 
 def get_only_entities(entities_with_sig):
@@ -127,7 +112,8 @@ def add_entity():
             Query().pubkey == node['pubkey']
         )
 
-    rank_nodes(pubkey)
+    # rank_nodes(pubkey)
+    rank_nodes_from(pubkey, nodes_table, edges_table)
 
     node = data['node']['pubkey']
     # returns current node
