@@ -45,7 +45,7 @@ def rank_nodes_from(initial_node_pubkey, nodes_table, edges_table):
         for pubkey in pubkeys_to_be_ranked:
             nodes_table.update(
                 set_('rank', rank),
-                (Query()['pubkey'] == pubkey) & (Query()['rank'] == -1)
+                (Query()['pubkey'] == pubkey) & ((Query()['rank'] == -1)|(Query()['rank']>rank))
             )
             # asdf = nodes_table.search(Query().pubkey == pubkey and Query().rank != -1)
             # total_updated_nodes += len(asdf)

@@ -4,7 +4,9 @@ from app import get_rsa_pair, to_priv_pem_key
 import random, rsa
 from utils import rank_nodes_from
 import names
+import os
 
+os.remove('gdata.json')
 db = TinyDB('gdata.json', indent=4)
 nodes_table = db.table('nodes')
 edges_table = db.table('edges')
@@ -30,7 +32,8 @@ def generate_edge(target, source):
     edge = {"from": nodes[source]["pubkey"],
             "to": nodes[target]["pubkey"],
             "trusted": True,
-            "message": pubkeys[target]}
+            "message": pubkeys[target],
+            "signature": signature.hex()}
     return edge
 edges = []
 for sigTarget in range(1, 4):

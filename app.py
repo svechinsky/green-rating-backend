@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request
 from tinydb import TinyDB, Query
-from tinydb.operations import set
 from config import privkey, pubkey, name
 import rsa
 from utils import *
@@ -92,18 +91,17 @@ def me():
     return jsonify(nodes_table.search(Query().rank == 0)[0])
 
 
-@app.route('/api/v1/add-entity')
+@app.route('/api/v1/add-entity', methods=['POST'])
 def add_entity():
     # receives node that signed you, and graph from its perspective
-    data = request.values
+    data = request.json
     edges_ = data['graph']['edges']
     for edge in edges_:
         edges_table.upsert(
-            edge,
-            Query()['from'] == edge['from'],
-            Query()['to'] == edge['to'],
+            edge,(
+            (Query()['from'] == edge['from']) &
+            (Query()['to'] == edge['to'])),
         )
-    edges_table.update(approve_edge)
 
     nodes_ = data['graph']['nodes']
     for node in nodes_:
@@ -120,32 +118,35 @@ def add_entity():
     return nodes_table.search(Query().pubkey == node)[0]
 
 def get_edges_to_node(node, rank):
-    total_edges = {}
-    last_gen_pubkeys = {node.pubkey}
+    total_edges = []
+    last_gen_pubkeys = {node['pubkey']}
     for rank in range(1, rank+1):
-        new_edges = {}
+        new_edges = []
         for pubkey in last_gen_pubkeys:
-            new_edges.update(edges_table.search(Query().to==pubkey))
-        total_edges.update(new_edges)
+            new_edges += edges_table.search(Query().to==pubkey)
+        total_edges += new_edges
         last_gen_pubkeys = {edge['from'] for edge in new_edges }
     return total_edges
 
-@app.route('/api/v1/sign-entity')
+@app.route('/api/v1/sign-entity', methods=['POST'])
 def sign_entity():
     # receives node to sign
-    data = request.values
+    data = request.json
     pubkey_to_sign = data['pubkey']
-    signature = rsa.sign(pubkey_to_sign, to_priv_pem_key(privkey), 'SHA-1')
+    signature = rsa.sign(pubkey_to_sign.encode(), to_priv_pem_key(privkey), 'SHA-1')
+    nodes_table.upsert(data, Query().pubkey==data['pubkey'])
     edges_table.upsert(
-        {'from': pubkey, 'to': pubkey_to_sign,
-         'signature': signature, 'is_approved': True},
-        {'from': pubkey, 'to': pubkey_to_sign}
+        {'from': pubkey, 'to': pubkey_to_sign, 'message':pubkey_to_sign,
+         'signature': signature.hex(), 'trusted': True},
+        (Query()['from']== pubkey)& (Query()['to']== pubkey_to_sign)
     )
-    rank_nodes(pubkey)
+    rank_nodes_from(pubkey, nodes_table, edges_table)
     # return nodes and edges as they are, and current node
-    return jsonify({'graph': {'edges': get_edges_to_node(), 'nodes': nodes_table.all()},
-                    'node': {'name': name, 'pubkey': pubkey}})
+    return jsonify({'graph': {'edges': get_edges_to_node(data,3), 'nodes': nodes_table.all()},
+                    'node': data})
+
 
 
 if __name__ == '__main__':
+    rank_nodes_from(pubkey, nodes_table, edges_table)
     app.run('0.0.0.0', 5000)
