@@ -5,7 +5,7 @@ from config import privkey, pubkey, name
 import rsa
 from flask_cors import CORS
 
-db = TinyDB('data.json', indent=4)
+db = TinyDB('gdata.json', indent=4)
 nodes_table = db.table('nodes')
 edges_table = db.table('edges')
 
@@ -133,6 +133,16 @@ def add_entity():
     # returns current node
     return nodes_table.search(Query().pubkey == node)[0]
 
+def get_edges_to_node(node, rank):
+    total_edges = {}
+    last_gen_pubkeys = {node.pubkey}
+    for rank in range(1, rank+1):
+        new_edges = {}
+        for pubkey in last_gen_pubkeys:
+            new_edges.update(edges_table.search(Query().to==pubkey))
+        total_edges.update(new_edges)
+        last_gen_pubkeys = {edge['from'] for edge in new_edges }
+    return total_edges
 
 @app.route('/api/v1/sign-entity')
 def sign_entity():
@@ -147,7 +157,7 @@ def sign_entity():
     )
     rank_nodes(pubkey)
     # return nodes and edges as they are, and current node
-    return jsonify({'graph': {'edges': edges_table.all(), 'nodes': nodes_table.all()},
+    return jsonify({'graph': {'edges': get_edges_to_node(), 'nodes': nodes_table.all()},
                     'node': {'name': name, 'pubkey': pubkey}})
 
 
