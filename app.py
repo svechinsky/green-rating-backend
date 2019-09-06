@@ -3,6 +3,7 @@ from tinydb import TinyDB, Query
 from tinydb.operations import set
 from config import privkey, pubkey, name
 import rsa
+from flask_cors import CORS
 
 db = TinyDB('data.json', indent=4)
 nodes_table = db.table('nodes')
@@ -10,6 +11,7 @@ edges_table = db.table('edges')
 
 
 app = Flask(__name__)
+CORS(app)
 
 
 def to_hex_der(pem_key):
